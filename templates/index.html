@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Essay-Sensei</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; line-height: 1.6; background-color: #f9f9f9; color: #333; }
+        h1 { color: #2c3e50; }
+        textarea { width: 100%; height: 300px; font-size: 16px; border-radius: 8px; border: 1px solid #ccc; padding: 10px; box-sizing: border-box; }
+        button { font-size: 18px; padding: 12px 25px; cursor: pointer; background-color: #3498db; color: white; border: none; border-radius: 5px; transition: background-color 0.3s; }
+        button:hover { background-color: #2980b9; }
+        #result-container { display: flex; gap: 20px; margin-top: 20px; align-items: flex-start; }
+        #score { font-size: 24px; font-weight: bold; padding: 15px; background-color: #eaf2f8; border-left: 5px solid #3498db; flex-shrink: 0; }
+        #feedback { font-size: 16px; padding: 15px; background-color: #fef5e7; border-left: 5px solid #f39c12; flex-grow: 1; }
+        #feedback h3 { margin-top: 0; }
+        #feedback ul { padding-left: 20px; margin-bottom: 0; }
+    </style>
+</head>
+<body>
+    <h1>AI Essay Grader 🤖</h1>
+    <p>Paste your essay below for an overall score and specific grammar feedback.</p>
+    
+    <textarea id="essayText" placeholder="Start writing your essay here..."></textarea>
+    <br><br>
+    <button id="gradeButton" onclick="getScore()">Grade My Essay</button>
+    
+    <div id="result-container"></div>
+
+    <script>
+        async function getScore() {
+            const essayText = document.getElementById('essayText').value;
+            const resultContainer = document.getElementById('result-container');
+            const gradeButton = document.getElementById('gradeButton');
+            
+            if (!essayText.trim()) {
+                resultContainer.innerHTML = "<p>Please enter an essay.</p>";
+                return;
+            }
+
+            resultContainer.innerHTML = "<p>🧠 Grading in progress...</p>";
+            gradeButton.disabled = true;
+            gradeButton.innerText = "Analyzing...";
+
+            try {
+                const response = await fetch('/grade', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ essay: essayText })
+                });
+                const data = await response.json();
+
+                // Clear previous results
+                resultContainer.innerHTML = '';
+
+                // Display the score
+                if (data.score !== undefined) {
+                    const scoreDiv = document.createElement('div');
+                    scoreDiv.id = 'score';
+                    scoreDiv.innerText = `Score: ${data.score} / 100`;
+                    resultContainer.appendChild(scoreDiv);
+                }
+
+                // Display the feedback
+                if (data.feedback && data.feedback.length > 0) {
+                    const feedbackDiv = document.createElement('div');
+                    feedbackDiv.id = 'feedback';
+                    let feedbackHTML = '<h3>Grammar Suggestions:</h3><ul>';
+                    data.feedback.forEach(item => {
+                        feedbackHTML += `<li>${item}</li>`;
+                    });
+                    feedbackHTML += '</ul>';
+                    feedbackDiv.innerHTML = feedbackHTML;
+                    resultContainer.appendChild(feedbackDiv);
+                } else if (data.score !== undefined) {
+                    // If there's a score but no feedback, say so
+                    const feedbackDiv = document.createElement('div');
+                    feedbackDiv.id = 'feedback';
+                    feedbackDiv.innerHTML = "<h3>Grammar Suggestions:</h3><p>No major grammatical errors found!</p>";
+                    resultContainer.appendChild(feedbackDiv);
+                }
+
+                if (data.error) {
+                    resultContainer.innerHTML = `<p>Error: ${data.error}</p>`;
+                }
+
+            } catch (error) {
+                resultContainer.innerHTML = "<p>An error occurred. Is the Python server running?</p>";
+            } finally {
+                gradeButton.disabled = false;
+                gradeButton.innerText = "Grade My Essay";
+            }
+        }
+    </script>
+</body>
+</html>
